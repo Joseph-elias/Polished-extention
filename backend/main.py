@@ -4,6 +4,14 @@ from routes import rewrite
 
 app = FastAPI(title="Polished Rewrite API")
 
+@app.get("/")
+def home():
+    return {"message": "Polished API is running"}
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 # Allow extension to call API from localhost
 app.add_middleware(
     CORSMiddleware,
@@ -14,7 +22,3 @@ app.add_middleware(
 )
 
 app.include_router(rewrite.router)
-
-@app.get("/")
-def root():
-    return {"message": "Polished backend is running."}
