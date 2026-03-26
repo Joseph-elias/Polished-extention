@@ -39,7 +39,7 @@ function sendMessageToTab<T>(tabId: number, message: TabMessage): Promise<T | un
 
 async function injectContentScriptIfPossible(tabId: number): Promise<void> {
   await chrome.scripting.executeScript({
-    target: { tabId },
+    target: { tabId, allFrames: true },
     files: ['content.js']
   });
 }

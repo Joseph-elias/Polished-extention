@@ -24,6 +24,111 @@ type SelectionSnapshot = InputSelectionSnapshot | ContentEditableSelectionSnapsh
 
 let lastSnapshot: SelectionSnapshot | null = null;
 
+function nodeToElement(node: Node | EventTarget | null): Element | null {
+  if (!node) return null;
+  if (node instanceof Element) return node;
+  if (node instanceof Node && node.nodeType === Node.TEXT_NODE) return node.parentElement;
+  return null;
+}
+
+function closestAcrossShadow(start: Element | null, selector: string): Element | null {
+  let current: Element | null = start;
+  while (current) {
+    const hit = current.closest(selector);
+    if (hit) return hit;
+    const root = current.getRootNode();
+    if (root instanceof ShadowRoot) {
+      current = root.host;
+    } else {
+      break;
+    }
+  }
+  return null;
+}
+
+function getDeepActiveElement(): Element | null {
+  let active: Element | null = document.activeElement;
+  while (active && active.shadowRoot && active.shadowRoot.activeElement) {
+    active = active.shadowRoot.activeElement;
+  }
+  return active;
+}
+
+function getSelectionForElement(el: HTMLElement): Selection | null {
+  const root = el.getRootNode();
+  if (root instanceof ShadowRoot) {
+    const rootWithSelection = root as ShadowRoot & { getSelection?: () => Selection | null };
+    if (typeof rootWithSelection.getSelection === 'function') {
+      const sel = rootWithSelection.getSelection();
+      if (sel) return sel;
+    }
+  }
+  return window.getSelection();
+}
+
+function getEditableFromNode(node: Node | EventTarget | null): EditableEl | null {
+  const el = nodeToElement(node);
+  if (!el) return null;
+
+  const contentEditable = closestAcrossShadow(el, '[contenteditable="true"], [contenteditable="plaintext-only"]');
+  if (contentEditable instanceof HTMLElement) return contentEditable;
+
+  const inputLike = closestAcrossShadow(el, 'textarea, input');
+  if (isTextInput(inputLike)) return inputLike;
+  return null;
+}
+
+function dispatchInputLikeEvents(el: HTMLElement, data: string) {
+  try {
+    el.dispatchEvent(new InputEvent('beforeinput', {
+      bubbles: true,
+      cancelable: true,
+      inputType: 'insertText',
+      data
+    }));
+  } catch {
+    // Ignore when InputEvent constructor is unavailable.
+  }
+
+  try {
+    el.dispatchEvent(new InputEvent('input', {
+      bubbles: true,
+      inputType: 'insertText',
+      data
+    }));
+  } catch {
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+}
+
+function selectionRangeInside(el: HTMLElement): Range | null {
+  const sel = getSelectionForElement(el);
+  if (!sel || sel.rangeCount === 0) return null;
+  const range = sel.getRangeAt(0);
+  return el.contains(range.commonAncestorContainer) ? range : null;
+}
+
+function setCaretToEnd(el: HTMLElement) {
+  const sel = getSelectionForElement(el);
+  if (!sel) return;
+  const caretRange = document.createRange();
+  caretRange.selectNodeContents(el);
+  caretRange.collapse(false);
+  sel.removeAllRanges();
+  sel.addRange(caretRange);
+}
+
+function tryExecInsertText(el: HTMLElement, text: string): boolean {
+  const liveRange = selectionRangeInside(el);
+  if (!liveRange) return false;
+  if (typeof document.execCommand !== 'function') return false;
+  try {
+    return document.execCommand('insertText', false, text);
+  } catch {
+    return false;
+  }
+}
+
 function isTextInput(el: Element | null): el is HTMLInputElement | HTMLTextAreaElement {
   if (!el) return false;
   if (el.tagName === 'TEXTAREA') return true;
@@ -39,23 +144,23 @@ function isEditable(el: Element | null): el is EditableEl {
 }
 
 function getEditableFromSelection(): EditableEl | null {
-  const sel = window.getSelection();
-  if (!sel || sel.rangeCount === 0) return null;
-
-  let node: Node | null = sel.anchorNode;
-  if (!node) return null;
-  if (node.nodeType === Node.TEXT_NODE) {
-    node = node.parentNode;
-  }
-  if (!(node instanceof Element)) return null;
-
-  const contentEditable = node.closest('[contenteditable="true"], [contenteditable="plaintext-only"]');
-  if (contentEditable instanceof HTMLElement) {
-    return contentEditable;
+  const candidates: Array<Selection | null> = [window.getSelection()];
+  const deepActive = getDeepActiveElement();
+  if (deepActive) {
+    const root = deepActive.getRootNode();
+    if (root instanceof ShadowRoot) {
+      const rootWithSelection = root as ShadowRoot & { getSelection?: () => Selection | null };
+      if (typeof rootWithSelection.getSelection === 'function') {
+        candidates.push(rootWithSelection.getSelection());
+      }
+    }
   }
 
-  const inputLike = node.closest('textarea, input');
-  if (isTextInput(inputLike)) return inputLike;
+  for (const sel of candidates) {
+    if (!sel || sel.rangeCount === 0) continue;
+    const editable = getEditableFromNode(sel.anchorNode);
+    if (editable) return editable;
+  }
   return null;
 }
 
@@ -74,7 +179,7 @@ function buildSnapshotFromElement(el: EditableEl): SelectionSnapshot {
     };
   }
 
-  const sel = window.getSelection();
+  const sel = getSelectionForElement(el);
   let selectedText = '';
   let range: Range | null = null;
 
@@ -94,10 +199,16 @@ function buildSnapshotFromElement(el: EditableEl): SelectionSnapshot {
   };
 }
 
-function updateSnapshotFromContext() {
-  const active = document.activeElement;
-  if (isEditable(active)) {
-    lastSnapshot = buildSnapshotFromElement(active);
+function updateSnapshotFromContext(preferredNode?: Node | EventTarget | null) {
+  const fromPreferred = getEditableFromNode(preferredNode ?? null);
+  if (fromPreferred) {
+    lastSnapshot = buildSnapshotFromElement(fromPreferred);
+    return;
+  }
+
+  const deepActive = getDeepActiveElement();
+  if (isEditable(deepActive)) {
+    lastSnapshot = buildSnapshotFromElement(deepActive);
     return;
   }
 
@@ -129,7 +240,15 @@ function replaceUsingSnapshot(snapshot: SelectionSnapshot, newText: string) {
     const caret = before.length + newText.length;
     input.focus();
     input.setSelectionRange(caret, caret);
-    input.dispatchEvent(new Event('input', { bubbles: true }));
+    try {
+      input.dispatchEvent(new InputEvent('input', {
+        bubbles: true,
+        inputType: 'insertReplacementText',
+        data: newText
+      }));
+    } catch {
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
     lastSnapshot = buildSnapshotFromElement(input);
     return;
   }
@@ -137,40 +256,50 @@ function replaceUsingSnapshot(snapshot: SelectionSnapshot, newText: string) {
   const editable = snapshot.el;
   editable.focus();
 
-  if (snapshot.range) {
+  if (tryExecInsertText(editable, newText)) {
+    dispatchInputLikeEvents(editable, newText);
+    lastSnapshot = buildSnapshotFromElement(editable);
+    return;
+  }
+
+  const liveRange = selectionRangeInside(editable);
+  if (liveRange) {
+    const range = liveRange.cloneRange();
+    range.deleteContents();
+    range.insertNode(document.createTextNode(newText));
+    setCaretToEnd(editable);
+  } else if (snapshot.range && document.contains(snapshot.range.commonAncestorContainer)) {
     const range = snapshot.range.cloneRange();
     range.deleteContents();
     range.insertNode(document.createTextNode(newText));
-    const sel = window.getSelection();
-    if (sel) {
-      sel.removeAllRanges();
-      const caretRange = document.createRange();
-      caretRange.selectNodeContents(editable);
-      caretRange.collapse(false);
-      sel.addRange(caretRange);
-    }
+    setCaretToEnd(editable);
   } else {
-    editable.innerText = newText;
+    editable.textContent = newText;
+    setCaretToEnd(editable);
   }
 
-  editable.dispatchEvent(new Event('input', { bubbles: true }));
+  dispatchInputLikeEvents(editable, newText);
   lastSnapshot = buildSnapshotFromElement(editable);
 }
 
-document.addEventListener('focusin', () => {
-  updateSnapshotFromContext();
+document.addEventListener('focusin', (event) => {
+  updateSnapshotFromContext(event.target);
 });
 
 document.addEventListener('selectionchange', () => {
   updateSnapshotFromContext();
 });
 
-document.addEventListener('keyup', () => {
-  updateSnapshotFromContext();
+document.addEventListener('keyup', (event) => {
+  updateSnapshotFromContext(event.target);
 });
 
-document.addEventListener('mouseup', () => {
-  updateSnapshotFromContext();
+document.addEventListener('mouseup', (event) => {
+  updateSnapshotFromContext(event.target);
+});
+
+document.addEventListener('input', (event) => {
+  updateSnapshotFromContext(event.target);
 });
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
