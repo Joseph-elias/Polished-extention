@@ -1,0 +1,13 @@
+{
+  "name": "polished-extension",
+  "version": "0.1.0",
+  "description": "Polished Chrome extension for AI-powered text rewriting.",
+  "scripts": {
+    "build": "tsc && npm run copy:js",
+    "copy:js": "node scripts/copy-js.js"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.1.38",
+    "typescript": "^5.0.0"
+  }
+}

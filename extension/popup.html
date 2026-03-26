@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Polished</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div id="polished-root" class="panel">
+    <div class="brand-row">
+      <div>
+        <h1>Polished</h1>
+        <p class="subtitle">Highlight text, rewrite it, and replace instantly.</p>
+      </div>
+      <div class="dot"></div>
+    </div>
+
+    <div class="section card">
+      <label for="source-text">Selected Text</label>
+      <textarea id="source-text" rows="4" readonly placeholder="Highlight text on the page first."></textarea>
+    </div>
+
+    <div class="section mode-row">
+      <div class="field">
+        <label for="mode">Rewrite Mode</label>
+        <select id="mode">
+          <option value="grammar_only">Grammar Only</option>
+          <option value="natural">Natural</option>
+          <option value="professional">Professional</option>
+          <option value="concise">Concise</option>
+        </select>
+      </div>
+      <button id="rewrite-btn">Rewrite</button>
+    </div>
+
+    <div class="section card">
+      <label for="rewritten-text">Rewritten Text</label>
+      <textarea id="rewritten-text" rows="4" readonly placeholder="Your rewritten text appears here."></textarea>
+    </div>
+
+    <div class="section btn-row">
+      <button id="copy-btn" class="secondary">Copy</button>
+      <button id="replace-btn">Replace in Page</button>
+    </div>
+
+    <div id="loading" class="status" style="display:none;">Rewriting...</div>
+    <div id="error-message"></div>
+
+    <footer class="footer">
+      <span class="credit">Developed by Joseph</span>
+      <div class="socials">
+        <a href="https://github.com/Joseph-elias" target="_blank" rel="noreferrer noopener">GitHub</a>
+        <a href="https://www.linkedin.com/in/joseph-elias-al-khoury-0a54a8239/" target="_blank" rel="noreferrer noopener">LinkedIn</a>
+      </div>
+    </footer>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

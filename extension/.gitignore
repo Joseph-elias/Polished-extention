@@ -1,0 +1,5 @@
+dist/
+popup.js
+content.js
+background.js
+node_modules/
