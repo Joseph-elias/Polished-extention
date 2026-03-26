@@ -1,40 +1,77 @@
-# Polished Chrome Extension
+# Polished Chrome Extension (MV3)
 
-## Features
-- Instantly rewrite and polish text in any input, textarea, or contenteditable field
-- Choose rewrite mode: Grammar Only, Natural, Professional, Concise
-- Copy or replace text in-place with one click
-- Works on any website
+Chrome extension popup that rewrites selected text through your FastAPI backend and replaces it back in the page.
+
+## Current Features
+- Capture highlighted text from `input`, `textarea`, and `contenteditable` fields (including Gmail compose)
+- Rewrite modes:
+  - `grammar_only`
+  - `natural`
+  - `professional`
+  - `concise`
+- One-click actions:
+  - `Rewrite`
+  - `Copy`
+  - `Replace in Page`
+- Error handling for unavailable tabs/content script injection
+- Footer credit links (GitHub + LinkedIn)
+
+## Project Structure
+- `manifest.json`: Extension manifest (MV3)
+- `popup.html`, `popup.css`, `popup.ts`: Popup UI and logic
+- `content.ts`: Page text capture and replacement logic
+- `background.ts`: Service worker scaffold
+- `assets/`: Icons
+- `scripts/copy-js.js`: Copies compiled JS from `dist/` to extension root
 
 ## Local Development
 
-1. Build the backend first (see backend/README.md)
-2. In `extension/`, run:
-   - `npm install` (if you add build tooling)
-   - Compile TypeScript to JavaScript (e.g., `tsc` or use a bundler)
-3. Load the extension in Chrome:
-   - Go to chrome://extensions
-   - Enable Developer Mode
-   - Click "Load unpacked" and select the `extension/` folder
-4. Make sure the backend is running at `http://localhost:8000/`
+### 1) Build the extension
+From `polished-extension/extension`:
 
-## File Overview
-- `manifest.json` — Chrome extension manifest (MV3)
-- `popup.html`, `popup.ts`, `popup.css` — Popup UI and logic
-- `content.ts` — Content script for grabbing and replacing text
-- `background.ts` — Service worker (for future use)
-- `utils/` — Helper functions
-- `assets/` — Icons
+```powershell
+npm.cmd install
+npm.cmd run build
+```
 
-## Notes
-- No secrets or API keys are ever exposed to the extension
-- All LLM calls go through your backend
-- Minimal, clean UI for best UX
+This compiles TypeScript and copies:
+- `popup.js`
+- `content.js`
+- `background.js`
 
-## Future Improvements
-- Keyboard shortcut for rewrite
-- Rewrite history/favorites
-- Options/settings page
-- Website allow/block list
-- Analytics/logging
-- Web Store packaging
+### 2) Load in Chrome
+1. Open `chrome://extensions`
+2. Enable `Developer mode`
+3. Click `Load unpacked`
+4. Select the `polished-extension/extension` folder
+
+### 3) Connect to backend
+The popup calls:
+- `http://localhost:8000/rewrite`
+
+Make sure backend is running first (see `backend/README.md`).
+
+## Test Flow
+1. Open a page with editable text (Gmail compose is supported)
+2. Highlight text
+3. Open the extension popup
+4. Confirm text appears in `Selected Text`
+5. Click `Rewrite`
+6. Click `Replace in Page` (or `Copy`)
+
+## Important Notes
+- After extension changes:
+  - Run `npm.cmd run build`
+  - Click `Reload` in `chrome://extensions`
+  - Refresh the target tab (especially Gmail) so latest content script is injected
+- For production publish, switch popup API URL from localhost to your deployed backend URL.
+
+## Troubleshooting
+- `Could not establish connection. Receiving end does not exist.`:
+  - Reload extension and refresh tab
+  - Avoid restricted pages like `chrome://*`
+- `Failed to rewrite` with backend `502`:
+  - Check backend error detail (invalid key/model/quota/access)
+- Selection not detected:
+  - Reselect text and reopen popup
+  - Ensure cursor is in an editable field

@@ -1,60 +1,90 @@
-# Polished Backend - FastAPI + Gemini
+# Polished Backend (FastAPI + Gemini)
+
+FastAPI service used by the Chrome extension to rewrite text with Gemini.
+
+## Current Behavior
+- Endpoint: `POST /rewrite`
+- Valid modes:
+  - `grammar_only`
+  - `natural`
+  - `professional`
+  - `concise`
+- Loads `.env` automatically from `backend/.env`
+- Uses Gemini `generateContent` REST API
+- Returns detailed provider errors when Gemini request fails
 
 ## Setup
 
-1. Clone the repo and navigate to `backend/`:
-
-```
+### 1) Go to backend directory
+```powershell
 cd polished-extension/backend
 ```
 
-2. Create a `.env` file in `backend/`:
-
-```
-GEMINI_API_KEY=your-gemini-api-key-here
-GEMINI_MODEL=gemini-1.5-flash
-# Optional:
-# GEMINI_API_URL=https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent
+### 2) Create virtual environment (recommended)
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-3. Install dependencies:
+### 3) Configure environment
+Create `backend/.env`:
 
-```
-pip install -r requirements.txt
-```
-
-4. Run the server:
-
-```
-uvicorn main:app --reload
+```env
+GEMINI_API_KEY=your-gemini-api-key
+GEMINI_MODEL=gemini-2.5-flash-lite
+# Optional explicit endpoint override:
+# GEMINI_API_URL=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent
 ```
 
-- The API will be available at `http://localhost:8000/`
-- The rewrite endpoint: `POST /rewrite`
+## Run
+From `polished-extension/backend`:
 
-## Endpoint
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn main:app --reload
+```
 
-- **POST** `/rewrite`
-- **Body:**
-  ```json
-  {
-    "text": "...",
-    "mode": "grammar_only | natural | professional | concise"
-  }
-  ```
-- **Response:**
-  ```json
-  {
-    "original_text": "...",
-    "detected_language": "",
-    "mode": "...",
-    "rewritten_text": "..."
-  }
-  ```
+Server:
+- `http://localhost:8000/`
 
-## Notes
-- The backend is ready for local development and can be deployed anywhere FastAPI runs.
-- The Gemini API key is never exposed to the frontend/extension.
-- `backend/.env` is loaded automatically by the backend config.
-- Prompt logic is in `prompts/rewrite_prompt.txt` for easy editing.
-- You can swap out Gemini for another LLM by updating `services/llm_service.py`.
+Health check:
+- `GET /` returns `{"message":"Polished backend is running."}`
+
+## API Contract
+
+### Request
+`POST /rewrite`
+
+```json
+{
+  "text": "Hello i need help",
+  "mode": "grammar_only"
+}
+```
+
+### Response
+```json
+{
+  "original_text": "Hello i need help",
+  "detected_language": "",
+  "mode": "grammar_only",
+  "rewritten_text": "Hello, I need help."
+}
+```
+
+## Error Handling
+- `400`: missing text or invalid mode
+- `500`: server configuration issue (for example missing `GEMINI_API_KEY`)
+- `502`: upstream Gemini error (status and provider message included in `detail`)
+
+Example:
+- `Gemini API request failed (status 404): ... model not found ...`
+
+## Security Notes
+- Do not expose Gemini key in frontend/extension
+- Keep `backend/.env` private (`backend/.gitignore` ignores it)
+- If key is ever exposed, rotate it immediately
+
+## Deploy Notes
+- Deploy this backend before publishing extension
+- Update extension `API_URL` in `extension/popup.ts` to your production backend
+- Ensure CORS remains enabled for extension calls
