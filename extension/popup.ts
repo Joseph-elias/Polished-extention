@@ -1,6 +1,8 @@
 // Polished popup logic
 
-const API_URL = 'http://localhost:8000/rewrite';
+// const API_URL = 'http://localhost:8000/rewrite';
+const API_URL = 'https://polished-extention.onrender.com/rewrite';
+
 const NO_RECEIVER_ERROR = 'Could not establish connection. Receiving end does not exist.';
 
 type TabMessage =
