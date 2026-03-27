@@ -70,7 +70,10 @@ function getEditableFromNode(node: Node | EventTarget | null): EditableEl | null
   const el = nodeToElement(node);
   if (!el) return null;
 
-  const contentEditable = closestAcrossShadow(el, '[contenteditable="true"], [contenteditable="plaintext-only"]');
+  const contentEditable = closestAcrossShadow(
+    el,
+    '[contenteditable]:not([contenteditable="false"]), [contenteditable="plaintext-only"]'
+  );
   if (contentEditable instanceof HTMLElement) return contentEditable;
 
   const inputLike = closestAcrossShadow(el, 'textarea, input');
@@ -257,7 +260,8 @@ function replaceUsingSnapshot(snapshot: SelectionSnapshot, newText: string) {
   editable.focus();
 
   if (tryExecInsertText(editable, newText)) {
-    dispatchInputLikeEvents(editable, newText);
+    // execCommand('insertText') already triggers native input events on modern editors.
+    // Dispatching synthetic events here can cause duplicate insertion in apps like WhatsApp Web.
     lastSnapshot = buildSnapshotFromElement(editable);
     return;
   }

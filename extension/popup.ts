@@ -104,11 +104,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       errorMessage.textContent = '';
     } else {
       sourceText.value = '';
-      errorMessage.textContent = 'Highlight text on the page, then reopen Polished.';
+      errorMessage.textContent = 'No highlighted text found. Paste text here manually, or highlight text and reopen Polished.';
     }
   } catch (_err) {
     sourceText.value = '';
-    errorMessage.textContent = 'This page does not allow text capture (try a normal website tab).';
+    errorMessage.textContent = 'This page blocks text capture. Paste text manually in Selected Text, then click Rewrite.';
   }
 
   rewriteBtn.onclick = async () => {
