@@ -34,6 +34,23 @@
       <button id="rewrite-btn">Rewrite</button>
     </div>
 
+    <div class="section mode-row">
+      <div class="field">
+        <label for="target-language">Translate To</label>
+        <select id="target-language">
+          <option value="Arabic">Arabic</option>
+          <option value="English" selected>English</option>
+          <option value="French">French</option>
+          <option value="German">German</option>
+          <option value="Italian">Italian</option>
+          <option value="Spanish">Spanish</option>
+          <option value="Portuguese">Portuguese</option>
+          <option value="Turkish">Turkish</option>
+        </select>
+      </div>
+      <button id="translate-btn" class="alt-action">Translate</button>
+    </div>
+
     <div class="section card">
       <label for="rewritten-text">Rewritten Text</label>
       <textarea id="rewritten-text" rows="4" readonly placeholder="Your rewritten text appears here."></textarea>
@@ -41,6 +58,7 @@
 
     <div class="section btn-row">
       <button id="copy-btn" class="secondary">Copy</button>
+      <button id="rewrite-result-btn" class="secondary">Rewrite Result</button>
       <button id="replace-btn">Replace in Page</button>
     </div>
 

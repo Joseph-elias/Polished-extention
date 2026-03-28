@@ -23,6 +23,150 @@ interface ContentEditableSelectionSnapshot {
 type SelectionSnapshot = InputSelectionSnapshot | ContentEditableSelectionSnapshot;
 
 let lastSnapshot: SelectionSnapshot | null = null;
+const INLINE_API_URL = 'https://polished-extention.onrender.com/rewrite';
+const INLINE_TOOLBAR_ID = 'polished-inline-toolbar';
+const INLINE_TOOLBAR_STATUS_ID = 'polished-inline-toolbar-status';
+const INLINE_TOOLBAR_STYLE_ID = 'polished-inline-toolbar-style';
+
+type RewriteMode = 'grammar_only' | 'natural' | 'professional' | 'concise';
+
+interface InlineAction {
+  label: string;
+  mode: RewriteMode;
+}
+
+const INLINE_ACTIONS: InlineAction[] = [
+  { label: 'Grammar Only', mode: 'grammar_only' },
+  { label: 'Natural', mode: 'natural' },
+  { label: 'Professional', mode: 'professional' },
+  { label: 'Concise', mode: 'concise' }
+];
+
+let toolbarBusy = false;
+let toolbarEl: HTMLDivElement | null = null;
+let toolbarStatusEl: HTMLDivElement | null = null;
+let selectionRaf: number | null = null;
+
+function ensureInlineToolbarStyles() {
+  if (document.getElementById(INLINE_TOOLBAR_STYLE_ID)) return;
+
+  const style = document.createElement('style');
+  style.id = INLINE_TOOLBAR_STYLE_ID;
+  style.textContent = `
+    #${INLINE_TOOLBAR_ID} {
+      position: fixed;
+      z-index: 2147483647;
+      display: none;
+      max-width: min(560px, calc(100vw - 16px));
+      pointer-events: auto;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      background:
+        radial-gradient(circle at top right, rgba(111, 214, 197, 0.27), transparent 48%),
+        linear-gradient(135deg, rgba(11, 17, 27, 0.96), rgba(14, 25, 40, 0.92));
+      box-shadow:
+        0 10px 30px rgba(2, 8, 20, 0.35),
+        0 2px 8px rgba(0, 0, 0, 0.22);
+      backdrop-filter: blur(12px) saturate(135%);
+      -webkit-backdrop-filter: blur(12px) saturate(135%);
+      padding: 10px;
+      font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      color: #ecf4ff;
+      animation: polished-toolbar-in 130ms ease-out;
+    }
+
+    #${INLINE_TOOLBAR_ID}[data-busy="true"] {
+      cursor: wait;
+    }
+
+    #${INLINE_TOOLBAR_ID} .polished-inline-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    #${INLINE_TOOLBAR_ID} .polished-inline-btn {
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 999px;
+      padding: 7px 11px;
+      min-height: 30px;
+      font-size: 12px;
+      line-height: 1;
+      letter-spacing: 0.01em;
+      font-weight: 600;
+      color: #f5fbff;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.06));
+      cursor: pointer;
+      transition: transform 110ms ease, background-color 110ms ease, border-color 110ms ease, box-shadow 110ms ease, opacity 110ms ease;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    }
+
+    #${INLINE_TOOLBAR_ID} .polished-inline-btn:hover:not(:disabled) {
+      border-color: rgba(255, 255, 255, 0.45);
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.09));
+      transform: translateY(-1px);
+      box-shadow: 0 6px 14px rgba(2, 8, 20, 0.32);
+    }
+
+    #${INLINE_TOOLBAR_ID} .polished-inline-btn:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    #${INLINE_TOOLBAR_ID} .polished-inline-btn:focus-visible {
+      outline: 2px solid rgba(112, 228, 208, 0.9);
+      outline-offset: 1px;
+    }
+
+    #${INLINE_TOOLBAR_ID} .polished-inline-btn:disabled {
+      opacity: 0.55;
+      cursor: wait;
+      transform: none;
+    }
+
+    #${INLINE_TOOLBAR_STATUS_ID} {
+      margin-top: 8px;
+      min-height: 14px;
+      font-size: 11px;
+      font-weight: 500;
+      color: rgba(236, 244, 255, 0.86);
+      display: none;
+    }
+
+    #${INLINE_TOOLBAR_STATUS_ID}[data-visible="true"] {
+      display: block;
+    }
+
+    #${INLINE_TOOLBAR_STATUS_ID}[data-error="true"] {
+      color: #ffc8cf;
+    }
+
+    #${INLINE_TOOLBAR_STATUS_ID}[data-loading="true"]::after {
+      content: "";
+      display: inline-block;
+      margin-left: 6px;
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(112, 228, 208, 0.92);
+      box-shadow: 0 0 0 0 rgba(112, 228, 208, 0.75);
+      animation: polished-pulse 1.2s infinite;
+      vertical-align: middle;
+    }
+
+    @keyframes polished-toolbar-in {
+      from { opacity: 0; transform: translate(-50%, calc(var(--polished-shift, 0%) + 4px)) scale(0.98); }
+      to { opacity: 1; transform: translate(-50%, var(--polished-shift, 0%)) scale(1); }
+    }
+
+    @keyframes polished-pulse {
+      0% { box-shadow: 0 0 0 0 rgba(112, 228, 208, 0.75); }
+      80% { box-shadow: 0 0 0 8px rgba(112, 228, 208, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(112, 228, 208, 0); }
+    }
+  `;
+  document.documentElement.appendChild(style);
+}
 
 function nodeToElement(node: Node | EventTarget | null): Element | null {
   if (!node) return null;
@@ -286,24 +430,269 @@ function replaceUsingSnapshot(snapshot: SelectionSnapshot, newText: string) {
   lastSnapshot = buildSnapshotFromElement(editable);
 }
 
+function ensureInlineToolbar(): HTMLDivElement {
+  if (toolbarEl && document.contains(toolbarEl)) return toolbarEl;
+  ensureInlineToolbarStyles();
+
+  const el = document.createElement('div');
+  el.id = INLINE_TOOLBAR_ID;
+  el.setAttribute('aria-hidden', 'true');
+
+  const row = document.createElement('div');
+  row.className = 'polished-inline-row';
+
+  for (const action of INLINE_ACTIONS) {
+    const btn = document.createElement('button');
+    btn.className = 'polished-inline-btn';
+    btn.type = 'button';
+    btn.textContent = action.label;
+    btn.dataset.mode = action.mode;
+    btn.addEventListener('mousedown', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+    btn.addEventListener('click', () => {
+      void runInlineRewrite(action.mode);
+    });
+    row.appendChild(btn);
+  }
+
+  const status = document.createElement('div');
+  status.id = INLINE_TOOLBAR_STATUS_ID;
+
+  el.addEventListener('mousedown', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+  });
+  el.addEventListener('click', (event) => {
+    event.stopPropagation();
+  });
+
+  el.appendChild(row);
+  el.appendChild(status);
+  document.documentElement.appendChild(el);
+  toolbarEl = el;
+  toolbarStatusEl = status;
+  return el;
+}
+
+function hideInlineToolbar() {
+  if (!toolbarEl) return;
+  toolbarEl.style.display = 'none';
+  toolbarEl.setAttribute('aria-hidden', 'true');
+  toolbarEl.removeAttribute('data-busy');
+  if (toolbarStatusEl) {
+    toolbarStatusEl.dataset.visible = 'false';
+    toolbarStatusEl.dataset.loading = 'false';
+    toolbarStatusEl.dataset.error = 'false';
+    toolbarStatusEl.textContent = '';
+  }
+}
+
+function setToolbarStatus(message: string, isError = false, isLoading = false) {
+  const status = toolbarStatusEl;
+  if (!status) return;
+  if (!message) {
+    status.dataset.visible = 'false';
+    status.dataset.loading = 'false';
+    status.dataset.error = 'false';
+    status.textContent = '';
+    return;
+  }
+  status.dataset.visible = 'true';
+  status.dataset.loading = isLoading ? 'true' : 'false';
+  status.dataset.error = isError ? 'true' : 'false';
+  status.textContent = message;
+}
+
+function getAnchorRectForSnapshot(snapshot: SelectionSnapshot): DOMRect | null {
+  if (snapshot.type === 'input') {
+    return snapshot.el.getBoundingClientRect();
+  }
+
+  const currentRange = selectionRangeInside(snapshot.el);
+  if (currentRange) {
+    const rect = currentRange.getBoundingClientRect();
+    if (rect.width > 0 || rect.height > 0) return rect;
+  }
+
+  if (snapshot.range) {
+    const rect = snapshot.range.getBoundingClientRect();
+    if (rect.width > 0 || rect.height > 0) return rect;
+  }
+
+  return snapshot.el.getBoundingClientRect();
+}
+
+function positionInlineToolbar(anchorRect: DOMRect) {
+  const el = ensureInlineToolbar();
+  el.style.display = 'block';
+  el.setAttribute('aria-hidden', 'false');
+
+  const viewportPadding = 8;
+  const centerX = anchorRect.left + (anchorRect.width / 2);
+  const showAbove = anchorRect.top > 56;
+  const top = showAbove ? anchorRect.top - 8 : anchorRect.bottom + 8;
+  const translateY = showAbove ? '-100%' : '0%';
+  el.style.setProperty('--polished-shift', translateY);
+
+  el.style.left = `${Math.max(viewportPadding, Math.min(window.innerWidth - viewportPadding, centerX))}px`;
+  el.style.top = `${Math.max(viewportPadding, Math.min(window.innerHeight - viewportPadding, top))}px`;
+  el.style.transform = `translate(-50%, ${translateY})`;
+}
+
+function hasDisplayableSelection(snapshot: SelectionSnapshot | null): boolean {
+  if (!snapshot) return false;
+  if (!document.contains(snapshot.el)) return false;
+  return !!getInlineSelectedText(snapshot).trim();
+}
+
+function getInlineSelectedText(snapshot: SelectionSnapshot): string {
+  if (snapshot.type === 'input') {
+    const start = snapshot.el.selectionStart ?? snapshot.selectionStart;
+    const end = snapshot.el.selectionEnd ?? snapshot.selectionEnd;
+    if (start === end) return '';
+    return snapshot.el.value.substring(start, end);
+  }
+
+  const liveRange = selectionRangeInside(snapshot.el);
+  if (liveRange && !liveRange.collapsed) {
+    return liveRange.toString();
+  }
+
+  if (
+    snapshot.range &&
+    !snapshot.range.collapsed &&
+    document.contains(snapshot.range.commonAncestorContainer)
+  ) {
+    return snapshot.range.toString();
+  }
+
+  return '';
+}
+
+function refreshInlineToolbar() {
+  if (toolbarBusy) return;
+  const snapshot = getBestSnapshot();
+  if (!snapshot || !hasDisplayableSelection(snapshot)) {
+    hideInlineToolbar();
+    return;
+  }
+
+  const rect = getAnchorRectForSnapshot(snapshot);
+  if (!rect) {
+    hideInlineToolbar();
+    return;
+  }
+  positionInlineToolbar(rect);
+}
+
+async function runInlineRewrite(mode: RewriteMode) {
+  if (toolbarBusy) return;
+  const snapshot = getBestSnapshot();
+  if (!snapshot) {
+    hideInlineToolbar();
+    return;
+  }
+  const selectedText = getInlineSelectedText(snapshot).trim();
+  if (!selectedText) {
+    hideInlineToolbar();
+    return;
+  }
+
+  toolbarBusy = true;
+  const toolbar = ensureInlineToolbar();
+  toolbar.dataset.busy = 'true';
+  const buttons = toolbar.querySelectorAll('button');
+  buttons.forEach((button) => {
+    (button as HTMLButtonElement).disabled = true;
+    button.setAttribute('aria-disabled', 'true');
+  });
+  setToolbarStatus('Rewriting...', false, true);
+
+  try {
+    const response = await fetch(INLINE_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: selectedText, mode })
+    });
+
+    if (!response.ok) {
+      let detail = `Rewrite failed (${response.status})`;
+      try {
+        const data = await response.json();
+        if (data && typeof data.detail === 'string' && data.detail.trim()) {
+          detail = data.detail;
+        }
+      } catch {
+        // Keep default error text when response body is non-JSON.
+      }
+      throw new Error(detail);
+    }
+
+    const data = await response.json() as { rewritten_text?: string };
+    const rewritten = (data.rewritten_text || '').trim();
+    if (!rewritten) {
+      throw new Error('No rewritten text returned.');
+    }
+
+    replaceUsingSnapshot(snapshot, rewritten);
+    hideInlineToolbar();
+  } catch (_error) {
+    setToolbarStatus('Could not rewrite. Try again.', true);
+  } finally {
+    toolbarBusy = false;
+    toolbar.removeAttribute('data-busy');
+    buttons.forEach((button) => {
+      (button as HTMLButtonElement).disabled = false;
+      button.removeAttribute('aria-disabled');
+    });
+  }
+}
+
+function scheduleSelectionRefresh() {
+  if (selectionRaf !== null) return;
+  selectionRaf = window.requestAnimationFrame(() => {
+    selectionRaf = null;
+    refreshInlineToolbar();
+  });
+}
+
 document.addEventListener('focusin', (event) => {
   updateSnapshotFromContext(event.target);
+  scheduleSelectionRefresh();
 });
 
 document.addEventListener('selectionchange', () => {
   updateSnapshotFromContext();
+  scheduleSelectionRefresh();
 });
 
 document.addEventListener('keyup', (event) => {
   updateSnapshotFromContext(event.target);
+  if (event.key === 'Escape') {
+    hideInlineToolbar();
+    return;
+  }
+  scheduleSelectionRefresh();
 });
 
 document.addEventListener('mouseup', (event) => {
   updateSnapshotFromContext(event.target);
+  scheduleSelectionRefresh();
 });
 
 document.addEventListener('input', (event) => {
   updateSnapshotFromContext(event.target);
+  scheduleSelectionRefresh();
+});
+
+window.addEventListener('scroll', () => {
+  scheduleSelectionRefresh();
+}, true);
+
+window.addEventListener('resize', () => {
+  scheduleSelectionRefresh();
 });
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {

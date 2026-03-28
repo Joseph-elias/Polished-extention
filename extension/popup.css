@@ -139,7 +139,7 @@ button:disabled {
 
 .btn-row {
   display: grid;
-  grid-template-columns: 1fr 1.4fr;
+  grid-template-columns: 1fr 1fr 1.3fr;
   gap: 8px;
 }
 
@@ -150,6 +150,14 @@ button.secondary {
 
 button.secondary:hover {
   background: #cbd5e1;
+}
+
+button.alt-action {
+  background: #0b5d8a;
+}
+
+button.alt-action:hover {
+  background: #0a4c70;
 }
 
 .status {
