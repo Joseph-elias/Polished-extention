@@ -18,10 +18,14 @@ Polished helps you:
   - `professional`
   - `concise`
 - translate text to selected target languages
+- use an inline floating toolbar on selection (rewrite, translate, save note)
 - replace rewritten/translated text back into the page
 - save notes tied to the current page URL (persistent)
+- save notes from popup with two dedicated inputs:
+  - information to save
+  - personal comment
 - view notes in popup and in-page sticky notes widget
-- edit/delete notes from popup or directly from sticky notes UI
+- edit/delete notes from popup and directly from sticky notes UI (pen/bin actions)
 - export all notes as:
   - JSON
   - Markdown
@@ -43,8 +47,9 @@ polished-extension/
 - `extension/content.ts`
   - text selection capture
   - inline floating toolbar near selected text
+  - inline "Save As Note" action
   - replace text in page
-  - sticky notes overlay on page
+  - sticky notes overlay on page with per-note edit/delete
 - `extension/utils/notesStorage.ts`
   - URL normalization
   - CRUD for notes in `chrome.storage.local`
@@ -180,12 +185,15 @@ Response:
 ## Typical User Flow
 
 1. Highlight text on a page
-2. Open popup or use inline toolbar
-3. Rewrite or translate
+2. Use inline toolbar to rewrite/translate/save note, or open popup
+3. Rewrite or translate text
 4. Optionally replace text in page
-5. Save important information + personal comment as page note
+5. Save notes either:
+   - directly from inline toolbar (`Save As Note`)
+   - from popup notes section (`Information To Save` + `My Comment`)
 6. Revisit same page later and see notes restored
-7. Export knowledge as JSON or Markdown
+7. Manage notes on-page (pen/bin) or in popup
+8. Export knowledge as JSON or Markdown
 
 ## Security Notes
 

@@ -156,6 +156,41 @@ function setAllStoredNotes(notesByPage: StoredNotesByPage): Promise<void> {
   });
 }
 
+async function saveInlineNoteForCurrentPage(selectedText: string): Promise<boolean> {
+  const text = selectedText.trim();
+  if (!text || !location.href) return false;
+
+  const normalizedUrl = normalizePageUrlForNotes(location.href);
+  const allNotes = await getAllStoredNotes();
+  const currentNotes = allNotes[normalizedUrl] || [];
+  const now = new Date().toISOString();
+
+  const duplicate = currentNotes.find((note) => note.selectedText.trim() === text);
+  if (duplicate) {
+    allNotes[normalizedUrl] = currentNotes.map((note) =>
+      note.id === duplicate.id
+        ? { ...note, updatedAt: now }
+        : note
+    );
+    await setAllStoredNotes(allNotes);
+    return true;
+  }
+
+  const newNote: StoredPageNote = {
+    id: `note_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
+    url: normalizedUrl,
+    originalUrl: location.href,
+    selectedText: text,
+    userNote: '',
+    createdAt: now,
+    updatedAt: now
+  };
+
+  allNotes[normalizedUrl] = [newNote, ...currentNotes];
+  await setAllStoredNotes(allNotes);
+  return true;
+}
+
 async function updateStickyNoteInStorage(noteId: string, userNote: string): Promise<boolean> {
   const allNotes = await getAllStoredNotes();
   const now = new Date().toISOString();
@@ -630,6 +665,14 @@ function ensureInlineToolbarStyles() {
       align-items: center;
       padding-top: 8px;
       border-top: 1px solid rgba(255, 255, 255, 0.14);
+    }
+
+    #${INLINE_TOOLBAR_ID} .polished-inline-note-row {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255, 255, 255, 0.14);
+      display: flex;
+      justify-content: flex-end;
     }
 
     #${INLINE_TOOLBAR_ID} .polished-inline-language-field {
@@ -1129,6 +1172,22 @@ function ensureInlineToolbar(): HTMLDivElement {
   translateRow.appendChild(languageField);
   translateRow.appendChild(translateBtn);
 
+  const noteRow = document.createElement('div');
+  noteRow.className = 'polished-inline-note-row';
+
+  const saveNoteBtn = document.createElement('button');
+  saveNoteBtn.type = 'button';
+  saveNoteBtn.className = 'polished-inline-btn';
+  saveNoteBtn.textContent = 'Save As Note';
+  saveNoteBtn.addEventListener('mousedown', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+  });
+  saveNoteBtn.addEventListener('click', () => {
+    void runInlineSaveNote();
+  });
+  noteRow.appendChild(saveNoteBtn);
+
   const status = document.createElement('div');
   status.id = INLINE_TOOLBAR_STATUS_ID;
 
@@ -1140,6 +1199,7 @@ function ensureInlineToolbar(): HTMLDivElement {
   rewriteSection.appendChild(row);
   el.appendChild(rewriteSection);
   el.appendChild(translateRow);
+  el.appendChild(noteRow);
   el.appendChild(status);
   document.documentElement.appendChild(el);
   toolbarEl = el;
@@ -1384,6 +1444,52 @@ async function runInlineTranslate(targetLanguage: string) {
     hideInlineToolbar();
   } catch (_error) {
     setToolbarStatus('Could not translate. Try again.', true, false);
+  } finally {
+    toolbarBusy = false;
+    toolbar.removeAttribute('data-busy');
+    buttons.forEach((button) => {
+      (button as HTMLButtonElement).disabled = false;
+      button.removeAttribute('aria-disabled');
+    });
+    if (langSelect) langSelect.disabled = false;
+  }
+}
+
+async function runInlineSaveNote() {
+  if (toolbarBusy) return;
+  const snapshot = getBestSnapshot();
+  if (!snapshot) {
+    hideInlineToolbar();
+    return;
+  }
+
+  const selectedText = getInlineSelectedText(snapshot).trim();
+  if (!selectedText) {
+    setToolbarStatus('Select text first.', true, false);
+    return;
+  }
+
+  toolbarBusy = true;
+  const toolbar = ensureInlineToolbar();
+  toolbar.dataset.busy = 'true';
+  const buttons = toolbar.querySelectorAll('button');
+  const langSelect = toolbarLanguageSelectEl;
+  buttons.forEach((button) => {
+    (button as HTMLButtonElement).disabled = true;
+    button.setAttribute('aria-disabled', 'true');
+  });
+  if (langSelect) langSelect.disabled = true;
+  setToolbarStatus('Saving note...', false, true);
+
+  try {
+    const ok = await saveInlineNoteForCurrentPage(selectedText);
+    if (!ok) {
+      setToolbarStatus('Could not save note.', true, false);
+      return;
+    }
+    setToolbarStatus('Saved for this page.', false, false);
+  } catch {
+    setToolbarStatus('Could not save note.', true, false);
   } finally {
     toolbarBusy = false;
     toolbar.removeAttribute('data-busy');
