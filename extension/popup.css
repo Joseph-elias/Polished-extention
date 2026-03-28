@@ -62,6 +62,13 @@ h1 {
   margin-bottom: 12px;
 }
 
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
 .card {
   padding: 10px;
   border: 1px solid var(--line);
@@ -140,6 +147,80 @@ button:disabled {
 .btn-row {
   display: grid;
   grid-template-columns: 1fr 1fr 1.3fr;
+  gap: 8px;
+}
+
+.note-save-btn {
+  margin-top: 8px;
+}
+
+.note-form-grid {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.note-form-grid label {
+  margin-bottom: 0;
+}
+
+.notes-list {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.note-item {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 8px;
+}
+
+.note-selected-text {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  color: var(--text);
+  line-height: 1.35;
+  white-space: pre-wrap;
+}
+
+.note-item textarea {
+  min-height: 62px;
+}
+
+.note-meta {
+  margin-top: 6px;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.note-actions {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.note-actions button {
+  height: 34px;
+  font-size: 0.78rem;
+}
+
+.note-actions .danger {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.note-actions .danger:hover {
+  background: #fecaca;
+}
+
+.export-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
 

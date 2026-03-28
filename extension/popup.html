@@ -62,6 +62,34 @@
       <button id="replace-btn">Replace in Page</button>
     </div>
 
+    <div class="section card">
+      <div class="section-head">
+        <label>Notes For This Page</label>
+      </div>
+      <div class="note-form-grid">
+        <label for="note-selected-text-input">Information To Save</label>
+        <textarea id="note-selected-text-input" rows="3" placeholder="Selected text appears here, or paste the key information manually."></textarea>
+      </div>
+      <div class="note-form-grid">
+        <label for="note-input">My Comment</label>
+        <textarea id="note-input" rows="2" placeholder="Add your comment, summary, or reminder."></textarea>
+      </div>
+      <button id="save-note-btn" class="secondary note-save-btn">Save Note For This Page</button>
+      <div id="notes-status" class="status"></div>
+      <div id="notes-list" class="notes-list"></div>
+    </div>
+
+    <div class="section card">
+      <div class="section-head">
+        <label>Export Your Knowledge</label>
+      </div>
+      <div class="export-row">
+        <button id="export-json-btn" class="secondary">Export JSON</button>
+        <button id="export-md-btn" class="secondary">Export Markdown</button>
+      </div>
+      <div id="export-status" class="status"></div>
+    </div>
+
     <div id="loading" class="status" style="display:none;">Rewriting...</div>
     <div id="error-message"></div>
 
@@ -73,6 +101,6 @@
       </div>
     </footer>
   </div>
-  <script src="popup.js"></script>
+  <script type="module" src="popup.js"></script>
 </body>
 </html>
