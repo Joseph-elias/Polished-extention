@@ -945,7 +945,7 @@ function isTextInput(el: Element | null): el is HTMLInputElement | HTMLTextAreaE
   if (el.tagName === 'TEXTAREA') return true;
   if (el.tagName !== 'INPUT') return false;
   const input = el as HTMLInputElement;
-  const allowedTypes = ['text', 'search', 'email', 'url', 'tel', 'password'];
+  const allowedTypes = ['text', 'search', 'email', 'url', 'tel'];
   return allowedTypes.includes(input.type || 'text');
 }
 

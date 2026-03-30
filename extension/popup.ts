@@ -70,7 +70,7 @@ async function getSelectedTextViaExecuteScript(tabId: number): Promise<string> {
       }
 
       if (activeEl instanceof HTMLInputElement) {
-        const allowedTypes = ['text', 'search', 'email', 'url', 'tel', 'password'];
+        const allowedTypes = ['text', 'search', 'email', 'url', 'tel'];
         if (allowedTypes.includes(activeEl.type || 'text')) {
           const start = activeEl.selectionStart ?? 0;
           const end = activeEl.selectionEnd ?? 0;
